@@ -3,231 +3,287 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Global Pulse – Welt-Konjunktur für ETF-Investoren" />
   <title>Global Pulse</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
-    body { margin: 0; background: #0B0D10; font-family: 'IBM Plex Mono', monospace; }
-    input[type=range] { accent-color: #E8A33D; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0B0D10; color: #E5E2D9; font-family: 'IBM Plex Mono', monospace; padding: 2rem; min-height: 100vh; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .header { border-bottom: 1px solid #2A2E35; padding-bottom: 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+    .label { font-size: 11px; letter-spacing: 0.3em; color: #E8A33D; margin-bottom: 8px; }
+    h1 { font-size: 22px; font-weight: 700; }
+    .meta { font-size: 11px; color: #6B7280; text-align: right; line-height: 1.7; }
+    .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    button { padding: 8px 16px; font-size: 13px; border: 1px solid #2A2E35; background: transparent; color: #9CA3AF; font-family: inherit; cursor: pointer; transition: all 0.2s; }
+    button.active { background: #E8A33D; color: #0B0D10; border-color: #E8A33D; font-weight: 700; }
+    .formula-box { border: 1px solid #2A2E35; background: #14171C; margin-bottom: 24px; }
+    .formula-toggle { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; font-size: 11px; letter-spacing: 0.2em; color: #E8A33D; background: none; border: none; cursor: pointer; font-family: inherit; }
+    .formula-content { padding: 16px; border-top: 1px solid #2A2E35; }
+    .formula-eq { text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 16px; letter-spacing: 1px; }
+    .slider-box { border: 1px solid #2A2E35; padding: 12px; }
+    .slider-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
+    input[type=range] { width: 100%; accent-color: #E8A33D; }
+    .slider-labels { display: flex; justify-content: space-between; font-size: 10px; color: #6B7280; margin-top: 4px; }
+    .stat-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 24px; }
+    .stat-card { border: 1px solid #2A2E35; background: #14171C; padding: 16px; }
+    .stat-label { font-size: 10px; letter-spacing: 0.15em; color: #6B7280; margin-bottom: 6px; }
+    .stat-value { font-size: 13px; font-weight: 600; }
+    .chart-box { border: 1px solid #2A2E35; background: #14171C; padding: 16px 24px; margin-bottom: 16px; }
+    .chart-hint { font-size: 11px; color: #6B7280; margin-bottom: 12px; }
+    .bar-row { display: flex; align-items: center; margin-bottom: 6px; cursor: pointer; }
+    .bar-name { width: 110px; font-size: 12px; flex-shrink: 0; }
+    .bar-track { flex: 1; height: 22px; position: relative; background: #1E2128; }
+    .bar-fill { height: 100%; transition: width 0.4s; }
+    .bar-val { font-size: 11px; color: #9CA3AF; margin-left: 8px; width: 50px; }
+    .etf-box { border: 1px solid #2A2E35; background: #14171C; padding: 16px 24px; margin-bottom: 24px; }
+    .etf-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+    .etf-badge { font-size: 11px; padding: 4px 12px; border: 1px solid; }
+    .etf-row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #2A2E35; padding: 10px 0; font-size: 13px; }
+    .etf-ticker { font-size: 11px; color: #6B7280; }
+    .footer { font-size: 11px; color: #6B7280; line-height: 1.7; }
+    .selected-bar .bar-fill { outline: 2px solid #E5E2D9; outline-offset: -2px; }
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script>
-    const { useState, useMemo } = React;
-    const { BarChart, Bar, XAxis, YAxis, Cell, ResponsiveContainer, Tooltip } = Recharts;
+<div class="container">
 
-    const COUNTRIES = [
-      { name: "Indien", code: "IN", gdp: 6.5, inflation: 4.8, pmi: 58.5, rate: 6.5 },
-      { name: "Vietnam", code: "VN", gdp: 6.8, inflation: 3.4, pmi: 51.2, rate: 4.5 },
-      { name: "Philippinen", code: "PH", gdp: 5.9, inflation: 3.2, pmi: 53.0, rate: 5.5 },
-      { name: "Indonesien", code: "ID", gdp: 5.0, inflation: 2.9, pmi: 52.0, rate: 6.0 },
-      { name: "China", code: "CN", gdp: 4.8, inflation: 0.6, pmi: 49.5, rate: 3.1 },
-      { name: "Ägypten", code: "EG", gdp: 4.2, inflation: 18.5, pmi: 48.0, rate: 19.25 },
-      { name: "Saudi-Arabien", code: "SA", gdp: 3.5, inflation: 1.8, pmi: 56.0, rate: 5.5 },
-      { name: "Polen", code: "PL", gdp: 3.4, inflation: 4.1, pmi: 50.5, rate: 5.75 },
-      { name: "Nigeria", code: "NG", gdp: 3.2, inflation: 22.0, pmi: 51.5, rate: 27.5 },
-      { name: "Türkei", code: "TR", gdp: 3.0, inflation: 38.0, pmi: 47.0, rate: 45.0 },
-      { name: "USA", code: "US", gdp: 2.3, inflation: 2.7, pmi: 50.2, rate: 4.5 },
-      { name: "Südkorea", code: "KR", gdp: 2.0, inflation: 1.9, pmi: 50.0, rate: 2.75 },
-      { name: "Brasilien", code: "BR", gdp: 2.1, inflation: 4.3, pmi: 49.0, rate: 10.5 },
-      { name: "Mexiko", code: "MX", gdp: 1.8, inflation: 4.0, pmi: 48.5, rate: 9.5 },
-      { name: "UK", code: "GB", gdp: 1.2, inflation: 2.6, pmi: 50.8, rate: 4.25 },
-      { name: "Südafrika", code: "ZA", gdp: 1.1, inflation: 4.5, pmi: 49.8, rate: 7.5 },
-      { name: "Japan", code: "JP", gdp: 0.9, inflation: 2.2, pmi: 49.0, rate: 0.5 },
-      { name: "Frankreich", code: "FR", gdp: 0.8, inflation: 1.9, pmi: 47.5, rate: 3.15 },
-      { name: "Deutschland", code: "DE", gdp: 0.4, inflation: 2.3, pmi: 45.5, rate: 3.15 },
-      { name: "Russland", code: "RU", gdp: -1.0, inflation: 9.2, pmi: 47.0, rate: 19.0 },
-    ];
+  <div class="header">
+    <div>
+      <div class="label">GLOBAL PULSE — TERMINAL V0.1</div>
+      <h1>Welt-Konjunktur für ETF-Investoren</h1>
+    </div>
+    <div class="meta">STAND: DEMO-DATEN<br>20 LÄNDER · 5 KENNZAHLEN</div>
+  </div>
 
-    const ETF_MAP = {
-      IN: { access: "voll", etfs: [{ name: "iShares MSCI India UCITS ETF", ticker: "IIND", ter: "0,65%" }] },
-      VN: { access: "eingeschränkt", note: "Kein reines Einzelland-UCITS-ETF verfügbar.", etfs: [{ name: "Xtrackers MSCI AC Asia ex Japan Swap UCITS ETF", ticker: "XMAJ", ter: "0,65%" }] },
-      PH: { access: "eingeschränkt", note: "Kein reines Einzelland-UCITS-ETF verfügbar.", etfs: [{ name: "iShares MSCI Philippines ETF", ticker: "EPHE", ter: "0,59%" }] },
-      ID: { access: "voll", etfs: [{ name: "Xtrackers MSCI Indonesia Swap UCITS ETF", ticker: "XCID", ter: "0,65%" }] },
-      CN: { access: "voll", etfs: [{ name: "iShares MSCI China UCITS ETF", ticker: "ICHN", ter: "0,40%" }] },
-      EG: { access: "eingeschränkt", note: "Kein UCITS-Einzelland-ETF, nur US-gelistete Alternative.", etfs: [{ name: "VanEck Egypt Index ETF", ticker: "EGPT", ter: "0,85%" }] },
-      SA: { access: "voll", etfs: [{ name: "iShares MSCI Saudi Arabia Capped UCITS ETF", ticker: "SASX", ter: "0,60%" }] },
-      PL: { access: "voll", etfs: [{ name: "iShares MSCI Poland UCITS ETF", ticker: "IPOL", ter: "0,74%" }] },
-      NG: { access: "eingeschränkt", note: "Kein Einzelland-ETF, nur über Frontier-Market-Produkte.", etfs: [{ name: "iShares MSCI Frontier and Select EM ETF", ticker: "FM", ter: "0,79%" }] },
-      TR: { access: "voll", etfs: [{ name: "iShares MSCI Turkey UCITS ETF", ticker: "ITKY", ter: "0,74%" }] },
-      US: { access: "voll", etfs: [{ name: "iShares Core S&P 500 UCITS ETF", ticker: "CSPX", ter: "0,07%" }] },
-      KR: { access: "voll", etfs: [{ name: "iShares MSCI Korea UCITS ETF", ticker: "IKOR", ter: "0,74%" }] },
-      BR: { access: "voll", etfs: [{ name: "iShares MSCI Brazil UCITS ETF", ticker: "IBZL", ter: "0,74%" }] },
-      MX: { access: "voll", etfs: [{ name: "iShares MSCI Mexico Capped UCITS ETF", ticker: "IMXC", ter: "0,65%" }] },
-      GB: { access: "voll", etfs: [{ name: "iShares Core FTSE 100 UCITS ETF", ticker: "ISF", ter: "0,07%" }] },
-      ZA: { access: "voll", etfs: [{ name: "iShares MSCI South Africa UCITS ETF", ticker: "IZAF", ter: "0,65%" }] },
-      JP: { access: "voll", etfs: [{ name: "iShares Core MSCI Japan IMI UCITS ETF", ticker: "SJPA", ter: "0,15%" }] },
-      FR: { access: "voll", etfs: [{ name: "Amundi CAC 40 UCITS ETF", ticker: "CAC", ter: "0,25%" }] },
-      DE: { access: "voll", etfs: [{ name: "iShares Core DAX UCITS ETF", ticker: "EXS1", ter: "0,16%" }] },
-      RU: { access: "gesperrt", note: "Seit den Sanktionen 2022 ausgesetzt – aktuell nicht investierbar.", etfs: [] },
-    };
+  <div class="buttons" id="metric-buttons"></div>
+  <div class="formula-box" id="formula-box" style="display:none">
+    <button class="formula-toggle" onclick="toggleFormula()">
+      <span>WIE WIRD DER MOMENTUM-SCORE BERECHNET?</span>
+      <span id="formula-arrow">▼</span>
+    </button>
+    <div class="formula-content" id="formula-content" style="display:none">
+      <div class="formula-eq">
+        <span style="color:#E8A33D">Momentum-Score</span>
+        <span style="color:#6B7280"> = </span>
+        BIP-Wachstum
+        <span style="color:#6B7280"> − </span>
+        <span style="color:#4F7CAC" id="factor-display">0.25</span>
+        <span style="color:#6B7280"> × </span>
+        Inflation
+      </div>
+      <div class="slider-box">
+        <div class="slider-row">
+          <span style="color:#6B7280">Inflations-Gewichtung anpassen</span>
+          <span style="color:#E8A33D;font-weight:700" id="factor-label">0.25</span>
+        </div>
+        <input type="range" min="0.05" max="1.0" step="0.05" value="0.25" id="factor-slider" oninput="updateFactor(this.value)" />
+        <div class="slider-labels">
+          <span>0.05 – Inflation fast ignoriert</span>
+          <span>1.0 – voll gewichtet</span>
+        </div>
+        <p style="font-size:10px;color:#6B7280;margin-top:8px">⚡ Score aktualisiert sich live. Experimentelle Formel – kein anerkannter Finanzindex.</p>
+      </div>
+    </div>
+  </div>
 
-    const ACCESS_STYLE = {
-      voll: { label: "Voll zugänglich", color: "#E8A33D" },
-      "eingeschränkt": { label: "Eingeschränkt", color: "#9CA3AF" },
-      gesperrt: { label: "Gesperrt/Sanktioniert", color: "#B0413E" },
-    };
+  <div class="stat-cards">
+    <div class="stat-card"><div class="stat-label">↑ SPITZENREITER</div><div class="stat-value" id="top-card" style="color:#E8A33D"></div></div>
+    <div class="stat-card"><div class="stat-label">~ DURCHSCHNITT (20 LÄNDER)</div><div class="stat-value" id="avg-card"></div></div>
+    <div class="stat-card"><div class="stat-label">↓ SCHLUSSLICHT</div><div class="stat-value" id="bottom-card" style="color:#4F7CAC"></div></div>
+  </div>
 
-    function StatCard({ icon, label, value, accent }) {
-      return React.createElement('div', { className: "border border-[#2A2E35] bg-[#14171C] p-4" },
-        React.createElement('div', { className: "flex items-center gap-2 text-[10px] tracking-wider text-[#6B7280] mb-2" },
-          React.createElement('span', null, icon), label.toUpperCase()
-        ),
-        React.createElement('div', { className: "text-sm font-semibold", style: { color: accent } }, value)
-      );
-    }
+  <div class="chart-box">
+    <div class="chart-hint">Klick auf ein Land → ETF-Info erscheint unten</div>
+    <div id="chart"></div>
+  </div>
 
-    function App() {
-      const [metric, setMetric] = useState("momentum");
-      const [selected, setSelected] = useState("IN");
-      const [inflationFactor, setInflationFactor] = useState(0.25);
-      const [showFormula, setShowFormula] = useState(false);
+  <div class="etf-box" id="etf-panel">
+    <div class="etf-header">
+      <div>
+        <div class="label">ETF-ZUGANG</div>
+        <div style="font-size:18px;font-weight:600" id="etf-country"></div>
+      </div>
+      <div class="etf-badge" id="etf-badge"></div>
+    </div>
+    <div id="etf-note" style="font-size:12px;color:#9CA3AF;margin-bottom:12px"></div>
+    <div id="etf-list"></div>
+  </div>
 
-      const METRICS = {
-        momentum: { label: "Momentum-Score", unit: "pt", get: (c) => +(c.gdp - c.inflation * inflationFactor).toFixed(1), neutral: 0, betterHigh: true },
-        gdp: { label: "BIP-Wachstum", unit: "%", get: (c) => c.gdp, neutral: 0, betterHigh: true },
-        pmi: { label: "PMI", unit: "", get: (c) => c.pmi, neutral: 50, betterHigh: true },
-        inflation: { label: "Inflation", unit: "%", get: (c) => c.inflation, neutral: 5, betterHigh: false },
-        rate: { label: "Leitzins", unit: "%", get: (c) => c.rate, neutral: null, betterHigh: null },
-      };
+  <div class="footer">ⓘ Momentum-Score = BIP-Wachstum − Faktor × Inflation (experimentelle Demo-Formel, kein etablierter Index). PMI > 50 = Expansion. Amber = günstig, Blau = ungünstig. ETF-Angaben sind Beispiele, keine Anlageempfehlung. Alle Werte sind illustrative Demo-Daten, keine Live-Daten.</div>
+</div>
 
-      const m = METRICS[metric];
+<script>
+const COUNTRIES = [
+  { name:"Indien", code:"IN", gdp:6.5, inflation:4.8, pmi:58.5, rate:6.5 },
+  { name:"Vietnam", code:"VN", gdp:6.8, inflation:3.4, pmi:51.2, rate:4.5 },
+  { name:"Philippinen", code:"PH", gdp:5.9, inflation:3.2, pmi:53.0, rate:5.5 },
+  { name:"Indonesien", code:"ID", gdp:5.0, inflation:2.9, pmi:52.0, rate:6.0 },
+  { name:"China", code:"CN", gdp:4.8, inflation:0.6, pmi:49.5, rate:3.1 },
+  { name:"Ägypten", code:"EG", gdp:4.2, inflation:18.5, pmi:48.0, rate:19.25 },
+  { name:"Saudi-Arab.", code:"SA", gdp:3.5, inflation:1.8, pmi:56.0, rate:5.5 },
+  { name:"Polen", code:"PL", gdp:3.4, inflation:4.1, pmi:50.5, rate:5.75 },
+  { name:"Nigeria", code:"NG", gdp:3.2, inflation:22.0, pmi:51.5, rate:27.5 },
+  { name:"Türkei", code:"TR", gdp:3.0, inflation:38.0, pmi:47.0, rate:45.0 },
+  { name:"USA", code:"US", gdp:2.3, inflation:2.7, pmi:50.2, rate:4.5 },
+  { name:"Südkorea", code:"KR", gdp:2.0, inflation:1.9, pmi:50.0, rate:2.75 },
+  { name:"Brasilien", code:"BR", gdp:2.1, inflation:4.3, pmi:49.0, rate:10.5 },
+  { name:"Mexiko", code:"MX", gdp:1.8, inflation:4.0, pmi:48.5, rate:9.5 },
+  { name:"UK", code:"GB", gdp:1.2, inflation:2.6, pmi:50.8, rate:4.25 },
+  { name:"Südafrika", code:"ZA", gdp:1.1, inflation:4.5, pmi:49.8, rate:7.5 },
+  { name:"Japan", code:"JP", gdp:0.9, inflation:2.2, pmi:49.0, rate:0.5 },
+  { name:"Frankreich", code:"FR", gdp:0.8, inflation:1.9, pmi:47.5, rate:3.15 },
+  { name:"Deutschland", code:"DE", gdp:0.4, inflation:2.3, pmi:45.5, rate:3.15 },
+  { name:"Russland", code:"RU", gdp:-1.0, inflation:9.2, pmi:47.0, rate:19.0 },
+];
 
-      const data = useMemo(() =>
-        [...COUNTRIES].map(c => ({ ...c, value: m.get(c) })).sort((a, b) => b.value - a.value),
-        [metric, inflationFactor]
-      );
+const ETF_MAP = {
+  IN:{access:"voll",etfs:[{name:"iShares MSCI India UCITS ETF",ticker:"IIND",ter:"0,65%"}]},
+  VN:{access:"eingeschränkt",note:"Kein reines Einzelland-UCITS-ETF verfügbar.",etfs:[{name:"Xtrackers MSCI AC Asia ex Japan Swap UCITS ETF",ticker:"XMAJ",ter:"0,65%"}]},
+  PH:{access:"eingeschränkt",note:"Kein reines Einzelland-UCITS-ETF verfügbar.",etfs:[{name:"iShares MSCI Philippines ETF",ticker:"EPHE",ter:"0,59%"}]},
+  ID:{access:"voll",etfs:[{name:"Xtrackers MSCI Indonesia Swap UCITS ETF",ticker:"XCID",ter:"0,65%"}]},
+  CN:{access:"voll",etfs:[{name:"iShares MSCI China UCITS ETF",ticker:"ICHN",ter:"0,40%"}]},
+  EG:{access:"eingeschränkt",note:"Kein UCITS-Einzelland-ETF, nur US-gelistete Alternative.",etfs:[{name:"VanEck Egypt Index ETF",ticker:"EGPT",ter:"0,85%"}]},
+  SA:{access:"voll",etfs:[{name:"iShares MSCI Saudi Arabia Capped UCITS ETF",ticker:"SASX",ter:"0,60%"}]},
+  PL:{access:"voll",etfs:[{name:"iShares MSCI Poland UCITS ETF",ticker:"IPOL",ter:"0,74%"}]},
+  NG:{access:"eingeschränkt",note:"Nur über Frontier-Market-Produkte abgedeckt.",etfs:[{name:"iShares MSCI Frontier and Select EM ETF",ticker:"FM",ter:"0,79%"}]},
+  TR:{access:"voll",etfs:[{name:"iShares MSCI Turkey UCITS ETF",ticker:"ITKY",ter:"0,74%"}]},
+  US:{access:"voll",etfs:[{name:"iShares Core S&P 500 UCITS ETF",ticker:"CSPX",ter:"0,07%"}]},
+  KR:{access:"voll",etfs:[{name:"iShares MSCI Korea UCITS ETF",ticker:"IKOR",ter:"0,74%"}]},
+  BR:{access:"voll",etfs:[{name:"iShares MSCI Brazil UCITS ETF",ticker:"IBZL",ter:"0,74%"}]},
+  MX:{access:"voll",etfs:[{name:"iShares MSCI Mexico Capped UCITS ETF",ticker:"IMXC",ter:"0,65%"}]},
+  GB:{access:"voll",etfs:[{name:"iShares Core FTSE 100 UCITS ETF",ticker:"ISF",ter:"0,07%"}]},
+  ZA:{access:"voll",etfs:[{name:"iShares MSCI South Africa UCITS ETF",ticker:"IZAF",ter:"0,65%"}]},
+  JP:{access:"voll",etfs:[{name:"iShares Core MSCI Japan IMI UCITS ETF",ticker:"SJPA",ter:"0,15%"}]},
+  FR:{access:"voll",etfs:[{name:"Amundi CAC 40 UCITS ETF",ticker:"CAC",ter:"0,25%"}]},
+  DE:{access:"voll",etfs:[{name:"iShares Core DAX UCITS ETF",ticker:"EXS1",ter:"0,16%"}]},
+  RU:{access:"gesperrt",note:"Seit Sanktionen 2022 ausgesetzt – aktuell nicht investierbar.",etfs:[]},
+};
 
-      const avg = (data.reduce((s, c) => s + c.value, 0) / data.length).toFixed(1);
-      const top = data[0];
-      const bottom = data[data.length - 1];
-      const selectedCountry = data.find(d => d.code === selected) || top;
-      const etfInfo = ETF_MAP[selectedCountry.code];
-      const accessStyle = ACCESS_STYLE[etfInfo.access];
+const ACCESS_STYLE = {
+  voll:{label:"Voll zugänglich",color:"#E8A33D"},
+  "eingeschränkt":{label:"Eingeschränkt",color:"#9CA3AF"},
+  gesperrt:{label:"Gesperrt / Sanktioniert",color:"#B0413E"}
+};
 
-      const e = React.createElement;
+const METRICS = {
+  momentum:{label:"Momentum-Score",unit:"pt",neutral:0,betterHigh:true},
+  gdp:{label:"BIP-Wachstum",unit:"%",neutral:0,betterHigh:true},
+  pmi:{label:"PMI",unit:"",neutral:50,betterHigh:true},
+  inflation:{label:"Inflation",unit:"%",neutral:5,betterHigh:false},
+  rate:{label:"Leitzins",unit:"%",neutral:null,betterHigh:null},
+};
 
-      return e('div', { style: { fontFamily: "'IBM Plex Mono', monospace", minHeight: '100vh', background: '#0B0D10', color: '#E5E2D9', padding: '2rem' } },
+let currentMetric = "momentum";
+let selectedCode = "IN";
+let inflationFactor = 0.25;
 
-        // Header
-        e('div', { style: { maxWidth: 900, margin: '0 auto 2rem', borderBottom: '1px solid #2A2E35', paddingBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 } },
-          e('div', null,
-            e('div', { style: { fontSize: 11, letterSpacing: '0.3em', color: '#E8A33D', marginBottom: 8 } }, 'GLOBAL PULSE — TERMINAL V0.1'),
-            e('h1', { style: { margin: 0, fontSize: 26, fontWeight: 700 } }, 'Welt-Konjunktur für ETF-Investoren')
-          ),
-          e('div', { style: { fontSize: 11, color: '#6B7280', textAlign: 'right', lineHeight: 1.7 } }, 'STAND: DEMO-DATEN', e('br'), '20 LÄNDER · 5 KENNZAHLEN')
-        ),
+function getValue(c, metric) {
+  if (metric === "momentum") return +(c.gdp - c.inflation * inflationFactor).toFixed(1);
+  if (metric === "gdp") return c.gdp;
+  if (metric === "pmi") return c.pmi;
+  if (metric === "inflation") return c.inflation;
+  if (metric === "rate") return c.rate;
+}
 
-        // Metric Buttons
-        e('div', { style: { maxWidth: 900, margin: '0 auto 12px', display: 'flex', flexWrap: 'wrap', gap: 8 } },
-          Object.entries(METRICS).map(([key, def]) =>
-            e('button', {
-              key,
-              onClick: () => setMetric(key),
-              style: {
-                padding: '8px 16px', fontSize: 13, border: '1px solid',
-                borderColor: metric === key ? '#E8A33D' : '#2A2E35',
-                background: metric === key ? '#E8A33D' : 'transparent',
-                color: metric === key ? '#0B0D10' : '#9CA3AF',
-                fontFamily: 'inherit', cursor: 'pointer', fontWeight: metric === key ? 700 : 400
-              }
-            }, def.label)
-          )
-        ),
+function getColor(val, metric) {
+  const m = METRICS[metric];
+  if (m.neutral === null) return "#9CA3AF";
+  const good = m.betterHigh ? val >= m.neutral : val <= m.neutral;
+  return good ? "#E8A33D" : "#4F7CAC";
+}
 
-        // Formel-Panel
-        metric === 'momentum' && e('div', { style: { maxWidth: 900, margin: '0 auto 24px', border: '1px solid #2a2e35', background: '#14171C' } },
-          e('button', {
-            onClick: () => setShowFormula(!showFormula),
-            style: { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', fontSize: 11, letterSpacing: '0.2em', color: '#E8A33D', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }
-          }, 'WIE WIRD DER MOMENTUM-SCORE BERECHNET?', e('span', null, showFormula ? '▲' : '▼')),
-          showFormula && e('div', { style: { padding: '0 16px 16px', borderTop: '1px solid #2A2E35' } },
-            e('div', { style: { textAlign: 'center', fontSize: 14, fontWeight: 600, margin: '16px 0', letterSpacing: 2 } },
-              e('span', { style: { color: '#E8A33D' } }, 'Momentum-Score'),
-              e('span', { style: { color: '#6B7280', margin: '0 8px' } }, '='),
-              e('span', null, 'BIP-Wachstum'),
-              e('span', { style: { color: '#6B7280', margin: '0 8px' } }, '−'),
-              e('span', { style: { color: '#4F7CAC' } }, inflationFactor.toFixed(2)),
-              e('span', { style: { color: '#6B7280', margin: '0 8px' } }, '×'),
-              e('span', null, 'Inflation')
-            ),
-            e('div', { style: { border: '1px solid #2A2E35', padding: 12, marginTop: 8 } },
-              e('div', { style: { display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 } },
-                e('span', { style: { color: '#6B7280' } }, 'Inflations-Gewichtung anpassen'),
-                e('span', { style: { color: '#E8A33D', fontWeight: 700 } }, inflationFactor.toFixed(2))
-              ),
-              e('input', { type: 'range', min: 0.05, max: 1.0, step: 0.05, value: inflationFactor, onChange: ev => setInflationFactor(parseFloat(ev.target.value)), style: { width: '100%', accentColor: '#E8A33D' } }),
-              e('div', { style: { display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#6B7280', marginTop: 4 } },
-                e('span', null, '0.05 – Inflation fast ignoriert'),
-                e('span', null, '1.0 – Inflation voll gewichtet')
-              ),
-              e('p', { style: { fontSize: 10, color: '#6B7280', margin: '8px 0 0' } }, '⚡ Score aktualisiert sich live. Experimentelle Formel – kein anerkannter Finanzindex.')
-            )
-          )
-        ),
+function render() {
+  const m = METRICS[currentMetric];
+  const data = COUNTRIES.map(c => ({...c, value: getValue(c, currentMetric)}))
+    .sort((a,b) => b.value - a.value);
 
-        // Stat Cards
-        e('div', { style: { maxWidth: 900, margin: '0 auto 24px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 } },
-          e(StatCard, { icon: '↑', label: 'Spitzenreiter', value: `${top.name} · ${top.value}${m.unit}`, accent: '#E8A33D' }),
-          e(StatCard, { icon: '~', label: 'Durchschnitt (20 Länder)', value: `${avg}${m.unit}`, accent: '#E5E2D9' }),
-          e(StatCard, { icon: '↓', label: 'Schlusslicht', value: `${bottom.name} · ${bottom.value}${m.unit}`, accent: '#4F7CAC' })
-        ),
+  const maxAbs = Math.max(...data.map(d => Math.abs(d.value)));
+  const avg = (data.reduce((s,c) => s+c.value,0)/data.length).toFixed(1);
 
-        // Chart
-        e('div', { style: { maxWidth: 900, margin: '0 auto', border: '1px solid #2A2E35', background: '#14171C', padding: '16px 24px' } },
-          e('div', { style: { fontSize: 11, color: '#6B7280', marginBottom: 12 } }, 'Klick auf ein Land → passende ETFs werden unten angezeigt'),
-          e(ResponsiveContainer, { width: '100%', height: 560 },
-            e(BarChart, { data, layout: 'vertical', margin: { left: 10, right: 30 } },
-              e(XAxis, { type: 'number', stroke: '#6B7280', tick: { fill: '#6B7280', fontSize: 11 }, tickFormatter: v => `${v}${m.unit}` }),
-              e(YAxis, { type: 'category', dataKey: 'name', stroke: '#6B7280', tick: { fill: '#E5E2D9', fontSize: 12 }, width: 110 }),
-              e(Tooltip, { contentStyle: { background: '#0B0D10', border: '1px solid #2A2E35', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }, formatter: v => [`${v}${m.unit}`, m.label] }),
-              e(Bar, { dataKey: 'value', radius: [0, 2, 2, 0] },
-                data.map((entry, i) => {
-                  const range = Math.max(...data.map(d => Math.abs(d.value - (m.neutral ?? 0)))) || 1;
-                  const opacity = 0.5 + 0.5 * (Math.abs(entry.value - (m.neutral ?? 0)) / range);
-                  let fill = '#9CA3AF';
-                  if (m.neutral !== null) {
-                    const good = m.betterHigh ? entry.value >= m.neutral : entry.value <= m.neutral;
-                    fill = good ? '#E8A33D' : '#4F7CAC';
-                  }
-                  return e(Cell, { key: i, fill, fillOpacity: opacity, stroke: entry.code === selected ? '#E5E2D9' : 'none', strokeWidth: entry.code === selected ? 2 : 0, style: { cursor: 'pointer' }, onClick: () => setSelected(entry.code) });
-                })
-              )
-            )
-          )
-        ),
+  // stat cards
+  document.getElementById("top-card").textContent = `${data[0].name} · ${data[0].value}${m.unit}`;
+  document.getElementById("avg-card").textContent = `${avg}${m.unit}`;
+  document.getElementById("bottom-card").textContent = `${data[data.length-1].name} · ${data[data.length-1].value}${m.unit}`;
 
-        // ETF Panel
-        e('div', { style: { maxWidth: 900, margin: '16px auto 0', border: '1px solid #2A2E35', background: '#14171C', padding: '16px 24px' } },
-          e('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 8 } },
-            e('div', null,
-              e('div', { style: { fontSize: 11, letterSpacing: '0.3em', color: '#E8A33D', marginBottom: 4 } }, 'ETF-ZUGANG'),
-              e('div', { style: { fontSize: 18, fontWeight: 600 } }, selectedCountry.name)
-            ),
-            e('div', { style: { fontSize: 11, padding: '4px 12px', border: `1px solid ${accessStyle.color}`, color: accessStyle.color } }, accessStyle.label)
-          ),
-          etfInfo.note && e('p', { style: { fontSize: 12, color: '#9CA3AF', marginBottom: 12, lineHeight: 1.6 } }, etfInfo.note),
-          etfInfo.etfs.length > 0
-            ? etfInfo.etfs.map(ef => e('div', { key: ef.ticker, style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #2A2E35', padding: '10px 0', fontSize: 13 } },
-                e('span', null, ef.name),
-                e('span', { style: { color: '#6B7280', fontSize: 11 } }, `${ef.ticker} · TER ${ef.ter}`)
-              ))
-            : e('p', { style: { color: '#B0413E', fontSize: 13 } }, 'Aktuell kein investierbares ETF-Produkt.')
-        ),
+  // chart
+  const chart = document.getElementById("chart");
+  chart.innerHTML = data.map(c => {
+    const pct = Math.max(2, Math.abs(c.value) / maxAbs * 100);
+    const color = getColor(c.value, currentMetric);
+    const sel = c.code === selectedCode ? "selected-bar" : "";
+    return `<div class="bar-row ${sel}" onclick="selectCountry('${c.code}')">
+      <div class="bar-name">${c.name}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct}%;background:${color};opacity:${0.5+0.5*Math.abs(c.value)/maxAbs}"></div>
+      </div>
+      <div class="bar-val">${c.value}${m.unit}</div>
+    </div>`;
+  }).join("");
 
-        // Footer
-        e('div', { style: { maxWidth: 900, margin: '24px auto 0', fontSize: 11, color: '#6B7280', lineHeight: 1.7 } },
-          'ⓘ Momentum-Score = BIP-Wachstum − Faktor × Inflation (experimentelle Demo-Formel, kein etablierter Index). PMI > 50 = Expansion. Amber = günstig, Blau = ungünstig, Grau = neutral. ETF-Angaben sind Beispiele, keine Anlageempfehlung. Alle Werte sind illustrative Demo-Daten.'
-        )
-      );
-    }
+  renderETF();
+}
 
-    ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
-  </script>
+function renderETF() {
+  const country = COUNTRIES.find(c => c.code === selectedCode);
+  const etf = ETF_MAP[selectedCode];
+  const style = ACCESS_STYLE[etf.access];
+
+  document.getElementById("etf-country").textContent = country.name;
+  const badge = document.getElementById("etf-badge");
+  badge.textContent = style.label;
+  badge.style.color = style.color;
+  badge.style.borderColor = style.color;
+
+  document.getElementById("etf-note").textContent = etf.note || "";
+  const list = document.getElementById("etf-list");
+  if (etf.etfs.length > 0) {
+    list.innerHTML = etf.etfs.map(e =>
+      `<div class="etf-row"><span>${e.name}</span><span class="etf-ticker">${e.ticker} · TER ${e.ter}</span></div>`
+    ).join("");
+  } else {
+    list.innerHTML = `<p style="color:#B0413E;font-size:13px">Aktuell kein investierbares ETF-Produkt.</p>`;
+  }
+}
+
+function selectCountry(code) {
+  selectedCode = code;
+  render();
+}
+
+function updateFactor(val) {
+  inflationFactor = parseFloat(val);
+  document.getElementById("factor-label").textContent = inflationFactor.toFixed(2);
+  document.getElementById("factor-display").textContent = inflationFactor.toFixed(2);
+  render();
+}
+
+function toggleFormula() {
+  const content = document.getElementById("formula-content");
+  const arrow = document.getElementById("formula-arrow");
+  const visible = content.style.display !== "none";
+  content.style.display = visible ? "none" : "block";
+  arrow.textContent = visible ? "▼" : "▲";
+}
+
+// Build metric buttons
+const btnContainer = document.getElementById("metric-buttons");
+Object.entries(METRICS).forEach(([key, def]) => {
+  const btn = document.createElement("button");
+  btn.textContent = def.label;
+  btn.id = "btn-" + key;
+  if (key === currentMetric) btn.classList.add("active");
+  btn.onclick = () => {
+    document.querySelectorAll(".buttons button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentMetric = key;
+    document.getElementById("formula-box").style.display = key === "momentum" ? "block" : "none";
+    render();
+  };
+  btnContainer.appendChild(btn);
+});
+
+document.getElementById("formula-box").style.display = "block";
+render();
+</script>
 </body>
 </html>
